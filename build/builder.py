@@ -52,7 +52,8 @@ class Builder():
         self.config['systmp'] = self.sysroot.query('tmp')
         self.config['num_cpus'] = multiprocessing.cpu_count()
         self.config['sources_directory'] ='{}/{}'.format(self.sysroot.query('tmp'), self.config['qt5_clone_dir'])
-        self.config['cross_install_dir']='{}/{}'.format(self.sysroot.query('sysroot'), self.config['qt5_install_prefix'])
+        self.config['bld_directory'] ='{}/{}'.format(self.sysroot.query('tmp'), self.config['qt5_bld_dir'])
+        self.config['cross_install_dir']='{}{}'.format(self.sysroot.query('sysroot'), self.config['qt5_install_prefix'])
         self.config['qt5_cross_qt_conf']='{sysroot}/{qt5_install_prefix}/{qt5_cross_binaries}/qt.conf'.format(**self.config)
 
         if not self.cross:
@@ -65,7 +66,7 @@ class Builder():
         self.config['configure_release'] = self.config['configure_release'].format(**self.config)
         self.config['configure_debug'] = self.config['configure_debug'].format(**self.config)
         self.config['configure_core_tools'] = self.config['configure_core_tools'].format(**self.config)
-        self.config['qmake_env'] = 'PATH=$PATH:{sysroot}/{qt5_install_prefix}/{qt5_cross_binaries}'.format(**self.config)
+        self.config['qmake_env'] = 'PATH={sysroot}/{qt5_install_prefix}/{qt5_cross_binaries}:$PATH'.format(**self.config)
 
         self.host_numcpus=multiprocessing.cpu_count()
 
@@ -101,10 +102,19 @@ class Builder():
         if self.dry_run:
             print 'dry_run - not removing anything'
             return True
-
+        #this is the directory clone source files.
         os.system(clean_sources)
 
         if self.sysroot.is_mounted():
+            print "ssyroot is mounted"
             os.system(clean_binaries)
         else:
             print 'Warning: sysroot is not mounted - cannot delete binaries'
+
+    def qcow_file_exists(self):
+        qcow_file = self.sysroot.query('qcow_image')
+        if os.path.exists(qcow_file):
+            return True
+        else:
+            return False
+

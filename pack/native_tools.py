@@ -10,7 +10,9 @@ import glob
 
 
 # This is Debian control file in a skeleton reusable block
-# FIXME: armh? these are cross compilation tools to run on x64
+# armh these are native tools
+
+
 control_skeleton='''
 Maintainer: Albert Casals <skarbat@gmail.com>
 Section: others
@@ -30,11 +32,11 @@ postinst_script='''
 case "$1" in
     configure)
        ln -sf /usr/local/qt5/bin/qmake /usr/bin/qmake
-       mkdir -p mkdir -p /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/
-       ln -sf /usr/bin/gcc      /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-gcc
-       ln -sf /usr/bin/g++      /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-g++
-       ln -sf /usr/bin/objcopy  /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-objcopy
-       ln -sf /usr/bin/strip    /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian-x64/bin/arm-linux-gnueabihf-strip
+       mkdir -p /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/
+       ln -sf /usr/bin/gcc      /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-gcc
+       ln -sf /usr/bin/g++      /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-g++
+       ln -sf /usr/bin/objcopy  /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-objcopy
+       ln -sf /usr/bin/strip    /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/arm-linux-gnueabihf-strip
        ;;
 esac
 
@@ -49,7 +51,7 @@ postrm_script='''
 case "$1" in
     remove|upgrade)
        rm -f /usr/bin/qmake
-       rm -rf /opt/rpi-tools
+       rm -rf /opt/rpi-tools/arm-bcm2708/gcc-linaro-arm-linux-gnueabihf-raspbian/bin/
        ;;
 esac
 
@@ -64,13 +66,17 @@ extra_deps = ''
 # For the moment we are collecting everyting in one single Debian pkg
 packages=[
 
-    { 'fileset': '',
+    { 'fileset': '',  # it is overlapped later.
       'pkg_name': 'libqt5all-native-tools',
       'pkg_version': 0,
       'pkg_depends': 'libqt5all-dev',
       'pkg_description': 'QT5 Native compilation tools for the RaspberryPI' }
 ]
 
+# native_tools.pack_tools(packager.config['sysroot'],
+#                         packager.config['qt5_install_prefix'],
+#                         packager.config['qt5_debian_version'],
+#                         'bin',
 
 def pack_tools(root_directory, source_directory, qt5_version, tools_directory, dry_run=False):
 

@@ -38,8 +38,13 @@ class CompilerQt5(Builder):
             print 'QT5 sources already cloned, continuing'
             return True
 
+        print "QT5 source is not cloned, continue to clone"
+
         git_command = 'git clone --branch={qt5_version} {qt5_repo_url} {sources_directory}'.format(**self.config)
-        init_command='cd {sources_directory} ; perl ./init-repository'.format(**self.config)
+        init_command ='cd {sources_directory} ; perl ./init-repository'.format(**self.config)
+
+        print "in clone_repos, git command: ", git_command
+        print "in clone_repos, git command: ", init_command
 
         if self.dry_run:
             print '>>> ', git_command
@@ -63,7 +68,9 @@ class CompilerQt5(Builder):
         print '>>> baptizing image'
         if self.dry_run:
             return True
-
+        if self.qcow_file_exists():
+            print "since qcow is there, don't do renew."
+            return self.sysroot.mount()
         # make sure the image is not currently in use
         if self.sysroot.is_mounted():
             if not self.sysroot.umount():
@@ -71,14 +78,15 @@ class CompilerQt5(Builder):
 
         # renew the image so we start from clean
         if not self.sysroot.renew():
+            # renew, start from scratch.
             return False
         else:
             # once renewed, expand it to grow in size, qt5 wouldn't fit
             self.sysroot.umount()
             if not self.sysroot.expand():
-                print 'error expanding image size to {}'.format(picute.query('qcow_size'))
+                print 'error expanding image size to {}'.format(self.sysroot.query('qcow_size'))
                 return False
-
+        #here, mount again.
         return self.sysroot.mount()
 
     def install_dependencies(self):
@@ -90,12 +98,17 @@ class CompilerQt5(Builder):
             print '>>>', command
             return True
 
+        # if self.sysroot.execute('dpkg -l libc6-de1') == 0:
+        #     print ">>> dependencies have been installed."
+        #     return True
+
         if self.sysroot.execute('apt-get update'):
+            print ">>> sysroot apt-get update error"
             return False
 
         if self.sysroot.execute(command):
             return False
-
+        print ">>> fix qualitied path"
         self._fix_qualified_paths()
         return True
 
@@ -116,6 +129,7 @@ class CompilerQt5(Builder):
                        self.sysroot.query('sysroot'),
                        self.sysroot.query('sysroot')))
 
+
     def configure(self, core_tools=False):
         if core_tools:
             configure_opts=self.config['configure_core_tools']
@@ -123,10 +137,18 @@ class CompilerQt5(Builder):
             configure_opts=self.config['configure_release'] if self.release else self.config['configure_debug']
 
         if self.cross:
-            command='cd {} && ./configure {}'.format(self.config['sources_directory'], configure_opts)
+            command='mkdir -p {} ; cd {} && {}/configure {}'.format(self.config['bld_directory'], self.config['bld_directory'],
+                                                                    self.config['sources_directory'], configure_opts)
+            print "configure command cmd: {0} in configure".format(command)
+
         else:
-            command='xsysroot -x "/bin/bash -c \'cd /tmp/{} && ./configure {}\'"'.format(
-                self.config['qt5_clone_dir'], configure_opts)
+            command='xsysroot -x "/bin/bash -c \'mkdir -p /tmp/{}; cd /tmp/{} && /tmp/{}/configure {}\'"'.format(
+                                        self.config['qt5_bld_dir_native'],
+                                        self.config['qt5_bld_dir_native'],
+                                        self.config['qt5_clone_dir'],
+                                        configure_opts)
+
+            print "configure command cmd: {0} in configure".format(command)
 
         if self.dry_run:
             print '>>>', command
@@ -135,11 +157,12 @@ class CompilerQt5(Builder):
         rc = os.system(command)
         return os.WEXITSTATUS(rc) == 0
 
+
     def make(self):
         if self.cross:
-            command='cd {sources_directory} && make -j {num_cpus}'.format(**self.config)
+            command='cd {bld_directory} && make -j {num_cpus}'.format(**self.config)
         else:
-            command='xsysroot -x "/bin/bash -c \'cd /tmp/{qt5_clone_dir} && make -j {num_cpus}\'"'.format(**self.config)
+            command='xsysroot -x "/bin/bash -c \'cd /tmp/{qt5_bld_dir_native} && make -j {num_cpus}\'"'.format(**self.config)
 
         if self.dry_run:
             print '>>>', command
@@ -157,10 +180,10 @@ class CompilerQt5(Builder):
             'HostBinaries = {qt5_install_prefix}/{qt5_cross_binaries}\n'.format(**self.config)
 
         if self.cross:
-            command='cd {sources_directory} && sudo make install && ' \
+            command='cd {bld_directory} && sudo make install && ' \
                 'sudo mv -fv {cross_install_dir}/bin {cross_install_dir}/{qt5_cross_binaries}'.format(**self.config)
         else:
-            command='xsysroot -x "/bin/bash -c \'cd /tmp/{qt5_clone_dir} && make install\'"'.format(**self.config)
+            command='xsysroot -x "/bin/bash -c \'cd /tmp/{qt5_bld_dir_native} && make install\'"'.format(**self.config)
 
         if self.dry_run:
             print '>>>', command
@@ -196,9 +219,9 @@ class CompilerWebengine(Builder):
         qmake_cmd='{}; cd {}/qtwebengine && qmake ' \
             'WEBENGINE_CONFIG+=use_proprietary_codecs CONFIG+={}'.format(
                 self.config['qmake_env'],
-                self.config['sources_directory'],
+                self.config['bld_directory'],
                 'release' if self.release else 'debug')
-
+        print "amqke_cmd: ", qmake_cmd
         if self.dry_run:
             print 'qmake >>>', qmake_cmd
             return True
@@ -206,17 +229,21 @@ class CompilerWebengine(Builder):
             return os.WEXITSTATUS(os.system(qmake_cmd))
 
     def make(self):
-        make_cmd='{qmake_env}; cd {sources_directory}/qtwebengine && make -j {num_cpus}'.format(**self.config)
+        make_cmd='{qmake_env}; cd {bld_directory}/qtwebengine && sudo make -j {num_cpus}'.format(**self.config)
         if self.dry_run:
-            print 'make >>>', make_cmd
+            print 'make command: >>>', make_cmd
             return True
         else:
+            print 'make command: >>>', make_cmd
             return os.WEXITSTATUS(os.system(make_cmd))
 
     def install(self):
-        install_cmd='{qmake_env}; cd {sources_directory}/qtwebengine && sudo make install'.format(**self.config)
+        install_cmd='{qmake_env}; cd {bld_directory}/qtwebengine && sudo make install'.format(**self.config)
         if self.dry_run:
-            print 'install >>>', install_cmd
+            print 'install webengine: ', install_cmd
             return True
         else:
+            print 'install webengine: ', install_cmd
             return os.WEXITSTATUS(os.system(install_cmd))
+
+

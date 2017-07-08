@@ -1,3 +1,4 @@
+#[type: ]library-name soname-version dependencies ...
 libQt5Help 5 libqt5all (>= 5.7-1)
 libQt5ScriptTools 5 libqt5all (>= 5.7-1)
 libQt5QuickTemplates2 5 libqt5all (>= 5.7-1)

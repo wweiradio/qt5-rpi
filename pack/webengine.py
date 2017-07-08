@@ -66,6 +66,9 @@ packages=[
     
 ]
 
+# packager.config['sysroot'],
+# packager.config['qt5_install_prefix'],
+# packager.config['qt5_debian_version'],
 
 def pack_webengine(root_directory, source_directory, qt5_version, dry_run=False):
 

@@ -109,7 +109,7 @@ class BuilderPrepare(Builder):
 
         print 'xsysroot installed version', xsysroot.__version__
         if os.system('xsysroot -p {} -s'.format(self.config['xsysroot_profile'])):
-            print 'WARNING: Please install xsysroot.conf on your homedir or /etc'
+            print 'WARNING: Please install setting xsysroot.conf on your homedir or /etc'
             return False
     
         return True
